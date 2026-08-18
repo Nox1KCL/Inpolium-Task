@@ -1,0 +1,16 @@
+[app]
+app_name = "SteamScraperAPI"
+log_level = "INFO"
+steam_base_url = "https://store.steampowered.com/"
+http_timeout = 15
+max_retries = 4
+browser_timeout_ms = 15000
+browser_viewport_width = 1280
+browser_viewport_height = 720
+
+[logger]
+level = "INFO"
+max_size = "10 MB"
+retention = "30 days"
+compression = "zip"
+json_format = true

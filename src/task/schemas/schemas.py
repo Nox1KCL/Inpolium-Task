@@ -1,13 +1,11 @@
-from datetime import date, time
-
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+
 
 class Review(BaseModel):
     text: str
-    rate: str
-    release_date: date
-    in_game_time: float
+    recommended: bool
+    release_date: str | None
+    in_game_time: str | None
 
 class Base(BaseModel):
     app_id: int
@@ -23,10 +21,51 @@ class BasicResult(Base):
 class HeadlessResult(Base):
     developer: str
     producer: str
-    release_date: date
+    release_date: str
     description: str
-    users_rating: float
-    review: Review
+    users_summary_rating: str
+    review: list[Review]
 
 class NonHeadlessResult(Base):
     status: str
+
+
+class SteamPrice(BaseModel):
+    currency: str
+    final: int
+    discount_percent: int
+
+class SteamPlatforms(BaseModel):
+    windows: bool
+    mac: bool
+    linux: bool
+
+class SteamItem(BaseModel):
+    id: int
+    name: str
+    tiny_image: str
+    platforms: SteamPlatforms
+    price: SteamPrice | None = None
+
+    def to_basic(self) -> BasicResult:
+
+        final_price = self.price.final if self.price else "Free"
+        currency = self.price.currency if self.price else "N/A"
+        discount = self.price.discount_percent if self.price else 0
+
+        if isinstance(final_price, int):
+            final_price /= 100
+
+        return BasicResult(
+            app_id=self.id,
+            name=self.name,
+            url=f"https://store.steampowered.com/app/{self.id}/",
+            price=final_price,
+            currency=currency,
+            discount=discount,
+            platforms=[p for p, v in self.platforms.model_dump().items() if v],
+        )
+
+class SteamAPIResult(BaseModel):
+    total: int
+    items: list[SteamItem]

@@ -10,7 +10,7 @@ from task.helpers import get_logs_dir
 
 class AppConfig(BaseModel):
     app_name: str
-    log_level: str
+    steam_api_url: str
     steam_base_url: str
     http_timeout: float
     max_retries: int
@@ -19,7 +19,7 @@ class AppConfig(BaseModel):
     browser_viewport_height: int
 
 class LoggerConfig(BaseModel):
-    level: str = "INFO"
+    level: str = Field(default="INFO")
     logs_dir: str = Field(default_factory=get_logs_dir)
     max_size: str = Field(default="10 MB")
     retention: str = Field(default="30 days")

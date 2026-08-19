@@ -2,6 +2,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+
 def load_env(path: str = ".env") -> None:
     _ = load_dotenv(path)
 

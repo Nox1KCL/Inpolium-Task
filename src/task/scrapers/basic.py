@@ -6,7 +6,7 @@ from task.schemas.schemas import BasicResult, SteamAPIResult
 from task.scrapers.utils import unified_game, create_api_url
 
 
-async def basic_search(cfg: AppConfig, term: str, country_code: str, language: str, limit: int) -> list[BasicResult] | None:
+async def basic_search(cfg: AppConfig, term: str, limit: int = 1, country_code: str = "us", language: str = "english") -> list[BasicResult] | None:
     url, params = create_api_url(cfg, term, country_code, language)
     timeout = cfg.http_timeout
     results: list[BasicResult] = []

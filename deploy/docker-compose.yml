@@ -19,6 +19,47 @@ services:
     volumes:
         - postgres_data:/var/lib/postgresql
 
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: victoriametrics
+    env_file:
+        - ../.env
+    ports:
+        - "${VM_PORT}:8428"
+    volumes:
+        - vmdata:/victoria-metrics-data
+    command:
+        - "-retentionPeriod=14d"
+        - "-storageDataPath=/victoria-metrics-data"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    env_file:
+        - ../.env
+    ports:
+        - "${JAEGER_MP}:16686"
+        - "${JAEGER_PORT}:4318"
+    volumes:
+        - jaeger_data:/badger
+    environment:
+        - COLLECTOR_OTLP_ENABLED=true
+        - SPAN_STORAGE_TYPE=badger
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    env_file:
+        - ../.env
+    ports:
+        - "${GRAFANA_PORT}:3000"
+    environment:
+        - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN}
+        - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PWD}
+        - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+        - grafana_data:/var/lib/grafana
+
   app:
     build:
       context: ../
@@ -34,8 +75,13 @@ services:
     volumes:
         - ../src/task/config/config.toml:/app/config.toml
     depends_on:
-        postgres-db:
-            condition: service_healthy
+        - posgtres-db
+        - grafana
+        - victoriametrics
+        - jaeger
 
 volumes:
-  postgres_data:
+    postgres_data:
+    vmdata:
+    jaeger_data:
+    grafana_data:

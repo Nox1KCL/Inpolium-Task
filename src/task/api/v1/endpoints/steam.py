@@ -3,6 +3,8 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from opentelemetry import metrics
+from opentelemetry.metrics import Counter, Histogram
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,20 @@ from task.scrapers.basic import basic_search
 from task.scrapers.headless import headless_search
 from task.scrapers.non_headless import non_headless_search
 from task.scrapers.utils import url_with_params
+
+meter = metrics.get_meter("steam.scraper.api")
+
+counter: Counter = meter.create_counter(
+    "api.requests",
+    description="Counting total count of errors, valuable events",
+    unit="1"
+)
+
+histogram: Histogram = meter.create_histogram(
+    "api.request.duration",
+    description="Calculating total time for some durationals event",
+    unit="ms"
+)
 
 router = APIRouter(
     prefix="/steam/api/v1",
@@ -39,12 +55,17 @@ async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession
         data: list[dict[str, Any]] | None = [r.model_dump() for r in results]
 
     except Exception as e:
+        counter.add(1, {"method": method, "stage": "basic", "type": "errors.count"})
         logger.bind(method=method, term=term).error("Search error: {}", e)
+
         data = [{"error": str(e)}]
         status = "error"
         raise
 
     finally:
+        duration = (time.time() - start) * 1000
+        histogram.record(duration, {"method": method, "stage": "basic", "type": "spent.time"})
+
         db.add(DB_History(
             method=method,
             query=term,
@@ -55,6 +76,7 @@ async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession
         ))
         await db.commit()
 
+    counter.add(1, {"method": method, "stage": "basic", "type": "success.count"})
     return results
 
 @router.post("/games/search/expanded")
@@ -76,12 +98,17 @@ async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DB
         status = "success"
 
     except Exception as e:
+        counter.add(1, {"method": method, "stage": "expanded", "type": "errors.count"})
         logger.bind(method=method, term=term).error("Search error: {}", e)
+
         data = [{"error": str(e)}]
         status = "error"
         raise
 
     finally:
+        duration = (time.time() - start) * 1000
+        histogram.record(duration, {"method": method, "stage": "expanded", "type": "spent.time"})
+
         db.add(DB_History(
             method=method,
             query=term,
@@ -92,6 +119,7 @@ async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DB
         ))
         await db.commit()
 
+    counter.add(1, {"method": method, "stage": "expanded", "type": "success.count"})
     return result
 
 @router.post("/games/open")
@@ -121,12 +149,17 @@ async def open(term: str, params: dict[str, str], db: DBSession, cfg: ConfigSess
         data = [result.model_dump()]
 
     except Exception as e:
+        counter.add(1, {"method": method, "stage": "open", "type": "errors.count"})
         logger.bind(method=method, term=term).error("Open error: {}", e)
+
         data = [{"error": str(e)}]
         status = "error"
         raise
 
     finally:
+        duration = (time.time() - start) * 1000
+        histogram.record(duration, {"method": method, "stage": "open", "type": "spent.time"})
+
         db.add(DB_History(
             method=method,
             query=term,
@@ -137,19 +170,32 @@ async def open(term: str, params: dict[str, str], db: DBSession, cfg: ConfigSess
         ))
         await db.commit()
 
+    counter.add(1, {"method": method, "stage": "open", "type": "success.count"})
     return result
 
 @router.get("/history")
 async def history(skip: int,  db: DBSession, limit: int = 50) -> list[HistoryResponse]:
+    start = time.time()
+
     stmt = select(DB_History).order_by(DB_History.id.desc()).offset(skip).limit(limit)
     results = await db.execute(stmt)
     records = results.scalars().all()
+
+    duration = (time.time() - start) * 1000
+    histogram.record(duration, {"method": "history/all", "stage": "history/all", "type": "spent.time"})
+
     return [HistoryResponse.model_validate(r) for r in records]
 
 @router.get("/history/{history_id}")
 async def get_history_by_id(history_id: int, db: DBSession) -> HistoryResponse:
+    start = time.time()
+
     stmt = select(DB_History).where(DB_History.id == history_id)
     history = await db.scalar(stmt)
     if history is None:
         raise HTTPException(status_code=404, detail="Record not found")
+
+    duration = (time.time() - start) * 1000
+    histogram.record(duration, {"method": "history/id", "stage": "history/id", "type": "spent.time"})
+
     return HistoryResponse.model_validate(history)

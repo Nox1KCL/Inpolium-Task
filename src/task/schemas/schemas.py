@@ -46,7 +46,7 @@ class HistoryResponse(BaseModel):
 class SteamPrice(BaseModel):
     currency: str
     final: int
-    discount_percent: int
+    discount_percent: int = 0
 
 class SteamPlatforms(BaseModel):
     windows: bool

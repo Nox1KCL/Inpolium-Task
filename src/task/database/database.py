@@ -33,7 +33,7 @@ class DB_History(Base):
     status: Mapped[str] = mapped_column(String(20))
     start_time: Mapped[float] = mapped_column()
     finish_time: Mapped[float] = mapped_column()
-    result: Mapped[list[dict[str, Any]]] | None = mapped_column(JSON, index=True)
+    result: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSON, nullable=True)
 
 async def init_db() -> None:
     async with engine.begin() as conn:

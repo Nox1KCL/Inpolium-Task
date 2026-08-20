@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 
 class Review(BaseModel):
@@ -7,18 +9,18 @@ class Review(BaseModel):
     release_date: str | None
     in_game_time: str | None
 
-class Base(BaseModel):
+class Basis(BaseModel):
     app_id: int
     name: str
     url: str
     price: float | str
 
-class BasicResult(Base):
+class BasicResult(Basis):
     currency: str
     discount: float
     platforms: list[str]
 
-class HeadlessResult(Base):
+class HeadlessResult(Basis):
     developer: str
     producer: str
     release_date: str
@@ -26,8 +28,19 @@ class HeadlessResult(Base):
     users_summary_rating: str
     review: list[Review]
 
-class NonHeadlessResult(Base):
+class NonHeadlessResult(Basis):
     status: str
+
+class HistoryResponse(BaseModel):
+    id: int
+    method: str
+    query: str
+    status: str
+    start_time: float
+    finish_time: float
+    result: list[dict[str, Any]] | None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SteamPrice(BaseModel):

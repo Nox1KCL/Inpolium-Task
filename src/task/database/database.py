@@ -32,8 +32,8 @@ class DB_History(Base):
     method: Mapped[str] = mapped_column(String(50), index=True)
     query: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20))
-    start_time: Mapped[datetime] = mapped_column(DateTime)
-    finish_time: Mapped[datetime] = mapped_column(DateTime)
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finish_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     result: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSON, nullable=True)
 
 async def init_db() -> None:

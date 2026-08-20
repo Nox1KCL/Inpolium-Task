@@ -1,5 +1,5 @@
 [app]
-app_name="SteamScraperAPI"
+app_name="YourApp"
 steam_api_url="https://store.steampowered.com/api/storesearch/"
 steam_base_url="https://store.steampowered.com/app/"
 http_timeout=15

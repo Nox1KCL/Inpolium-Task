@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import time
 from typing import Annotated, Any
 
@@ -41,7 +42,9 @@ ConfigSession = Annotated[Config, Depends(Config.load_config)]
 
 @router.post("/games/search/basic")
 async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession) -> list[BasicResult] | str:
-    start = time.time()
+    start_metrics = time.time()
+    start_db = datetime.now(timezone.utc)
+
     method = "http"
     status = ""
     data = None
@@ -63,15 +66,15 @@ async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession
         raise
 
     finally:
-        duration = (time.time() - start) * 1000
+        duration = (time.time() - start_metrics) * 1000
         histogram.record(duration, {"method": method, "stage": "basic", "type": "spent.time"})
 
         db.add(DB_History(
             method=method,
             query=term,
             status=status,
-            start_time=start,
-            finish_time=time.time(),
+            start_time=start_db,
+            finish_time=datetime.now(timezone.utc),
             result=data,
         ))
         await db.commit()
@@ -81,7 +84,9 @@ async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession
 
 @router.post("/games/search/expanded")
 async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DBSession, cfg: ConfigSession) -> HeadlessResult:
-    start = time.time()
+    start_metrics = time.time()
+    start_db = datetime.now(timezone.utc)
+
     method = "headless"
     status = ""
     data = None
@@ -106,15 +111,15 @@ async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DB
         raise
 
     finally:
-        duration = (time.time() - start) * 1000
+        duration = (time.time() - start_metrics) * 1000
         histogram.record(duration, {"method": method, "stage": "expanded", "type": "spent.time"})
 
         db.add(DB_History(
             method=method,
             query=term,
             status=status,
-            start_time=start,
-            finish_time=time.time(),
+            start_time=start_db,
+            finish_time=datetime.now(timezone.utc),
             result=data,
         ))
         await db.commit()
@@ -124,7 +129,9 @@ async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DB
 
 @router.post("/games/open")
 async def open(term: str, params: dict[str, str], db: DBSession, cfg: ConfigSession, background_tasks: BackgroundTasks) -> NonHeadlessResult:
-    start = time.time()
+    start_metrics = time.time()
+    start_db = datetime.now(timezone.utc)
+
     method = "non_headless"
     status = ""
     data = None
@@ -157,15 +164,15 @@ async def open(term: str, params: dict[str, str], db: DBSession, cfg: ConfigSess
         raise
 
     finally:
-        duration = (time.time() - start) * 1000
+        duration = (time.time() - start_metrics) * 1000
         histogram.record(duration, {"method": method, "stage": "open", "type": "spent.time"})
 
         db.add(DB_History(
             method=method,
             query=term,
             status=status,
-            start_time=start,
-            finish_time=time.time(),
+            start_time=start_db,
+            finish_time=datetime.now(timezone.utc),
             result=data,
         ))
         await db.commit()

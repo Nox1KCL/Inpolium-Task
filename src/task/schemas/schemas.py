@@ -1,7 +1,7 @@
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
+from datetime import datetime
 
 class Review(BaseModel):
     text: str
@@ -36,8 +36,8 @@ class HistoryResponse(BaseModel):
     method: str
     query: str
     status: str
-    start_time: float
-    finish_time: float
+    start_time: datetime
+    finish_time: datetime
     result: list[dict[str, Any]] | None
 
     model_config = ConfigDict(from_attributes=True)

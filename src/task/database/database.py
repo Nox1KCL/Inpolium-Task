@@ -1,8 +1,8 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 from loguru import logger
-from pydantic import ConfigDict
-from sqlalchemy import JSON, String
+from datetime import datetime
+from sqlalchemy import JSON, String, DateTime
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
     AsyncSession,
@@ -32,8 +32,8 @@ class DB_History(Base):
     method: Mapped[str] = mapped_column(String(50), index=True)
     query: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20))
-    start_time: Mapped[float] = mapped_column()
-    finish_time: Mapped[float] = mapped_column()
+    start_time: Mapped[datetime] = mapped_column(DateTime)
+    finish_time: Mapped[datetime] = mapped_column(DateTime)
     result: Mapped[list[dict[str, Any]] | None]  = mapped_column(JSON, nullable=True)
 
 async def init_db() -> None:

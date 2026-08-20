@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any
+from loguru import logger
 from pydantic import ConfigDict
 from sqlalchemy import JSON, String
 from sqlalchemy.ext.asyncio import (
@@ -38,7 +39,12 @@ class DB_History(Base):
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables created")
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
-        yield session
+        logger.info("DBSession opened")
+        try:
+            yield session
+        finally:
+            logger.info("DBSession closed")

@@ -2,6 +2,7 @@ import time
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,7 +37,9 @@ async def basic(term: str, results_limit: int, db: DBSession, cfg: ConfigSession
 
         status = "success"
         data: list[dict[str, Any]] | None = [r.model_dump() for r in results]
+
     except Exception as e:
+        logger.bind(method=method, term=term).error("Search error: {}", e)
         data = [{"error": str(e)}]
         status = "error"
         raise
@@ -73,6 +76,7 @@ async def expanded(term: str, reviews_count: int, params: dict[str, str], db: DB
         status = "success"
 
     except Exception as e:
+        logger.bind(method=method, term=term).error("Search error: {}", e)
         data = [{"error": str(e)}]
         status = "error"
         raise
@@ -117,6 +121,7 @@ async def open(term: str, params: dict[str, str], db: DBSession, cfg: ConfigSess
         data = [result.model_dump()]
 
     except Exception as e:
+        logger.bind(method=method, term=term).error("Open error: {}", e)
         data = [{"error": str(e)}]
         status = "error"
         raise

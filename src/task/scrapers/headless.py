@@ -1,11 +1,13 @@
 import re
 
 from loguru import logger
+from playwright.async_api import Page
 from typing_extensions import Any
 
 from task.schemas.schemas import HeadlessResult, Review
 from task.config.config import AppConfig
 from task.scrapers.utils import url_with_params, get_browser_page
+
 
 def parse_review_card(raw_text: str) -> Review:
     lines = []
@@ -34,7 +36,7 @@ def parse_review_card(raw_text: str) -> Review:
         if "ДОДАНО:" in lines[i].upper():
             added_idx = i
             break
-            
+
     useful_idx = len(lines)
     for i in range(len(lines)):
         if "КОРИСНОЮ" in lines[i].upper():
@@ -53,7 +55,7 @@ def parse_review_card(raw_text: str) -> Review:
         in_game_time=playtime,
     )
 
-async def extract_review_cards(page, reviews_count: int = 3) -> list[str]:
+async def extract_review_cards(page: Page, reviews_count: int = 3) -> list[str]:
     cards = page.locator('[data-featuretarget="appreviews"] [role="button"]').filter(has=page.locator('[data-miniprofile]'))
     count = await cards.count()
 
@@ -69,11 +71,9 @@ async def extract_review_cards(page, reviews_count: int = 3) -> list[str]:
             seen.add(text)
             texts.append(text)
 
-    logger.info(f"Review cards extracted: {len(texts)}")
     return texts
 
-
-async def scroll_to_reviews(page):
+async def scroll_to_reviews(page: Page):
     total_height = await page.evaluate("document.body.scrollHeight")
     for pos in range(0, total_height, 500):
         await page.evaluate(f"window.scrollTo(0, {pos})")
@@ -89,6 +89,7 @@ async def scroll_to_reviews(page):
 
 
 async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], reviews_count: int = 3):
+    logger.bind(app_id=app_id, reviews_count=reviews_count).info("Headless search started")
     async with get_browser_page(headless=True) as page:
         url = url_with_params(app_id, cfg.steam_base_url, params)
         _ = await page.goto(url)
@@ -113,7 +114,7 @@ async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], r
         review_texts = await extract_review_cards(page, reviews_count)
         reviews = [parse_review_card(raw) for raw in review_texts]
 
-        return HeadlessResult(
+        result = HeadlessResult(
             app_id=app_id,
             name=name,
             url=url,
@@ -125,3 +126,5 @@ async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], r
             users_summary_rating=summary,
             review=reviews,
         )
+
+        return result

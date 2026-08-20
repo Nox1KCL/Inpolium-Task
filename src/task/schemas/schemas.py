@@ -61,7 +61,6 @@ class SteamItem(BaseModel):
     price: SteamPrice | None = None
 
     def to_basic(self) -> BasicResult:
-
         final_price = self.price.final if self.price else "Free"
         currency = self.price.currency if self.price else "N/A"
         discount = self.price.discount_percent if self.price else 0

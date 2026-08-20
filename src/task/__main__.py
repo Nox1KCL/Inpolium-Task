@@ -5,17 +5,17 @@ from loguru import logger
 
 from fastapi.middleware.cors import CORSMiddleware
 from task.config.config import Config
-from task.database.database import Base, engine, init_db
+from task.database.database import engine, init_db
 from task.api.v1.router import v1_router
 from task.logger.logger import setup_logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("App Startup..")
-
     cfg = Config.load_config()
     setup_logger(cfg.logger)
+
+    logger.info("App Startup..")
     await init_db()
 
     yield

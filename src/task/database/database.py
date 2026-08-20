@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any
+from pydantic import ConfigDict
 from sqlalchemy import JSON, String
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
@@ -32,7 +33,11 @@ class DB_History(Base):
     status: Mapped[str] = mapped_column(String(20))
     start_time: Mapped[float] = mapped_column()
     finish_time: Mapped[float] = mapped_column()
-    result: Mapped[dict[str, Any]] = mapped_column(JSON, index=True)
+    result: Mapped[list[dict[str, Any]]] | None = mapped_column(JSON, index=True)
+
+async def init_db() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:

@@ -16,7 +16,7 @@ from task.scrapers.non_headless import non_headless_search
 from task.scrapers.utils import url_with_params
 
 router = APIRouter(
-    prefix="/api/v1",
+    prefix="/steam/api/v1",
     tags=["Steam_Games"]
 )
 

@@ -31,6 +31,7 @@ services:
     command:
         - "-retentionPeriod=14d"
         - "-storageDataPath=/victoria-metrics-data"
+        - "-opentelemetry.usePrometheusNaming=true"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -70,12 +71,16 @@ services:
     environment:
         - DB_HOST=postgres-db
         - DB_PORT=5432
+        - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+        - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${TRACES_ENDPOINT}
+        - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=${METRICS_ENDPOINT}
+        - OTEL_RESOURCE_ATTRIBUTES=service.name=steam.api.scraper
     ports:
         - "8000:8000"
     volumes:
         - ../src/task/config/config.toml:/app/config.toml
     depends_on:
-        - posgtres-db
+        - postgres-db
         - grafana
         - victoriametrics
         - jaeger

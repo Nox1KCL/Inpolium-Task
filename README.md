@@ -67,8 +67,6 @@ cd Inpolium-Task
    cp src/task/config/config-example.toml src/task/config/config.toml
    ```
 
-> **Щодо команди `cp`:** `cp` — це нативна команда Linux/macOS. У PowerShell вона доступна як alias для `Copy-Item` (зазвичай спрацьовує), а у класичному `cmd.exe` — ні. Тому ці кроки призначені для Linux-оточення (включно з WSL2).
-
 > **Примітка:** Файли `.env` та `config.toml` містять чутливі дані та виключені з контролю версій (`.gitignore`). Їх заповнення є обов'язковим.
 
 ### Встановлення залежностей

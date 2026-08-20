@@ -32,7 +32,11 @@ class Config(BaseSettings):
 
     @classmethod
     def load_config(cls, config_path: str | Path = "config.toml") -> Self:
-        path = Path(config_path)
+        if str(config_path) == "config.toml":
+            path = Path(__file__).parent / "config.toml"
+        else:
+            path = Path(config_path)
+
         with path.open("rb") as f:
             data = tomllib.load(f)
         return cls.model_validate(data)

@@ -1,8 +1,91 @@
+import re
+
+from loguru import logger
 from typing_extensions import Any
 
 from task.schemas.schemas import HeadlessResult, Review
 from task.config.config import AppConfig
-from task.scrapers.utils import parse_review_card, url_with_params, get_browser_page
+from task.scrapers.utils import url_with_params, get_browser_page
+
+def parse_review_card(raw_text: str) -> Review:
+    lines = []
+    for line in raw_text.split("\n"):
+        if line.strip() != "":
+            lines.append(line.strip())
+
+    recommended = False
+    if "Рекомендовано" in raw_text and "Не рекомендовано" not in raw_text:
+        recommended = True
+
+    date_match = re.search(r"ДОДАНО:\s*(.+)", raw_text, re.IGNORECASE)
+    if date_match:
+        posted_date = date_match.group(1).strip()
+    else:
+        posted_date = None
+
+    hours_match = re.search(r"([\d,.]+)\s*год", raw_text, re.IGNORECASE)
+    if hours_match:
+        playtime = hours_match.group(1)
+    else:
+        playtime = None
+
+    added_idx = -1
+    for i in range(len(lines)):
+        if "ДОДАНО:" in lines[i].upper():
+            added_idx = i
+            break
+            
+    useful_idx = len(lines)
+    for i in range(len(lines)):
+        if "КОРИСНОЮ" in lines[i].upper():
+            useful_idx = i
+            break
+
+    review_text = ""
+    if added_idx != -1 and added_idx < useful_idx:
+        text_lines = lines[added_idx + 1:useful_idx]
+        review_text = "\n".join(text_lines)
+
+    return Review(
+        text=review_text.strip(),
+        recommended=recommended,
+        release_date=posted_date,
+        in_game_time=playtime,
+    )
+
+async def extract_review_cards(page, reviews_count: int = 3) -> list[str]:
+    cards = page.locator('[data-featuretarget="appreviews"] [role="button"]').filter(has=page.locator('[data-miniprofile]'))
+    count = await cards.count()
+
+    texts = []
+    seen = set()
+
+    for i in range(count):
+        if len(texts) >= reviews_count:
+            break
+
+        text = await cards.nth(i).inner_text()
+        if text not in seen:
+            seen.add(text)
+            texts.append(text)
+
+    logger.info(f"Review cards extracted: {len(texts)}")
+    return texts
+
+
+async def scroll_to_reviews(page):
+    total_height = await page.evaluate("document.body.scrollHeight")
+    for pos in range(0, total_height, 500):
+        await page.evaluate(f"window.scrollTo(0, {pos})")
+        await page.wait_for_timeout(100)
+
+    for attempt in range(15):
+        await page.wait_for_timeout(1000)
+        body_text = await page.locator("body").inner_text()
+        if "ДОДАНО:" in body_text:
+            logger.info(f"Reviews loaded after {attempt + 1}s")
+            return
+    logger.warning("Reviews did not load after 15s")
 
 
 async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], reviews_count: int = 3):
@@ -10,7 +93,7 @@ async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], r
         url = url_with_params(app_id, cfg.steam_base_url, params)
         _ = await page.goto(url)
 
-        name = await page.locator(".apphub_AppName").inner_text()
+        name = await page.locator("#appHubAppName").inner_text()
         companies = await page.locator(".grid_content a").all_inner_texts()
         developer = companies[0] if len(companies) > 0 else "N/A"
         producer = companies[1] if len(companies) > 1 else "N/A"
@@ -25,34 +108,10 @@ async def headless_search(cfg: AppConfig, app_id: int, params: dict[str, Any], r
         description = await page.locator(".game_description_snippet").inner_text()
         summary = await page.locator(".game_review_summary").first.inner_text()
 
-        reviews_anchor = page.locator("#AppUserReviews, .user_reviews_scroll_area").first
-        await reviews_anchor.scroll_into_view_if_needed()
+        await scroll_to_reviews(page)
 
-        sort_dropdown = page.get_by_text("Показ", exact=True)
-        if await sort_dropdown.count() > 0:
-            await sort_dropdown.first.click()
-
-        async with page.expect_response(
-            lambda r: "ajaxappreviews" in r.url and r.status == 200
-        ) as resp_info:
-            await reviews_anchor.scroll_into_view_if_needed()
-            await page.locator('input[name="review_context"][value="recent"]').check()
-
-        _ = await resp_info.value
-
-        review_list = page.locator('[role="list"]').filter(has_text="Додано").first
-        cards = review_list.locator('div[role="button"]')
-        await cards.first.wait_for(state="visible")
-
-        count = await cards.count()
-        review_cards = []
-        for i in range(min(count, reviews_count)):
-            card_text = await cards.nth(i).inner_text()
-            review_cards.append(card_text)
-
-        reviews: list[Review] = []
-        for raw in review_cards:
-            reviews.append(parse_review_card(raw))
+        review_texts = await extract_review_cards(page, reviews_count)
+        reviews = [parse_review_card(raw) for raw in review_texts]
 
         return HeadlessResult(
             app_id=app_id,

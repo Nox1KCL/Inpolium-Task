@@ -1,0 +1,41 @@
+services:
+  postgres-db:
+    image: postgres:17-alpine
+    container_name: postgres
+    env_file:
+        - ../.env
+    environment:
+        POSTGRES_USER: ${DB_USER}
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nox} -d ${DB_NAME:-noxdb}"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+        start_period: 10s
+    ports:
+        - "${DB_PORT}:5432"
+    volumes:
+        - postgres_data:/var/lib/postgresql
+
+  app:
+    build:
+      context: ../
+      dockerfile: src/Dockerfile
+    container_name: steam-api-scraper
+    env_file:
+        - ../.env
+    environment:
+        - DB_HOST=postgres-db
+        - DB_PORT=5432
+    ports:
+        - "8000:8000"
+    volumes:
+        - ../src/task/config/config.toml:/app/config.toml
+    depends_on:
+        postgres-db:
+            condition: service_healthy
+
+volumes:
+  postgres_data:
